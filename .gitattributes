@@ -1,0 +1,7 @@
+cv_postprocessing/WeldGUI/weld-app/*.png !text !filter !merge !diff
+cv_postprocessing/WeldGUI/weld-app/*.zip !text !filter !merge !diff
+cv_postprocessing/WeldGUI/weld-app/*.mp4 !text !filter !merge !diff
+cv_postprocessing/WeldGUI/weld-app/public/logo192.png !text !filter !merge !diff
+cv_postprocessing/WeldGUI/weld-app/public/logo512.png !text !filter !merge !diff
+cv_postprocessing/WeldGUI/welding/weights/old/middle.pt !text !filter !merge !diff
+cv_postprocessing/WeldGUI/welding/examples/output/rendered.zip !text !filter !merge !diff
