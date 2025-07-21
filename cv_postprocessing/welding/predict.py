@@ -13,10 +13,8 @@ import numpy as np
 import json
 import pandas as pd
 import re
-
 from paddleocr import PaddleOCR
 from ultralytics import YOLO
-
 import json     
 import math
 from src.contours import  *
@@ -135,14 +133,10 @@ def main(config):
                 case=1
             else:
                 case=2
-            # print(case)
             #approximate side lines
             main_sides_rect = plate_width_line(rect, main_object_con)
-            #Aveen Here: so here I see that we are always taking 4 points, but the correct solution is to take 3 if incomplete penetration 
             (p11, p12), (p21, p22) = plate_width_line(quad, main_object_con)
             c1, c2 = line_intersection_contur([(p11, p21), (p12, p22)], main_object_con)
-            #here c1 and c2 are the 2 pink lines which are the closest parts between the main and the 
-            # c1, c2 = approximte_contour(c1, epsilon=0.001), approximte_contour(c2, epsilon=0.001)
             plot = cv2.polylines(plot, [c1], False, (255, 0, 255), 5)
             plot = cv2.polylines(plot, [c2], False, (255, 0, 255), 5)
             plot = cv2.line(plot, tuple(p11), tuple(p21), (255, 255, 0), 5) # bottom line
@@ -153,9 +147,7 @@ def main(config):
                 p11, p12 = p12, p11
                 p21, p22 = p22, p21
                 c1, c2 = c2,c1
-                # print(p11,"**", p12)
-                
-                        # print(p11)
+          
             res_d = []
             if case==1:
                 line = perpendicular_foot(p11, p21, p22)
@@ -168,10 +160,6 @@ def main(config):
             # calculate distances between sides of second masks
             for c, l in zip((c1, c2), ((p11, p21), (p12, p22))):
                 
-                # approximate upper and lower sides of middle part with straight lines
-                # and then calculate maximum and minimum deviations between contours and projection on the line
-                #Aveen Here: yeah here we also don't take into acount if it's 2 points down tehre or one
-                # t = np.linalg.norm(main_sides_rect[0][0] - main_sides_rect[0][1])
                 dist, _, p1, p2 = find_deviation_peaks(l, c, 0.0005 * t)
                 
                 res_d.append(np.abs(dist))
@@ -220,17 +208,11 @@ def main(config):
                     misalignment_bottom = compute_misalignment(p11, p21, line) * le
                     
                     misalignment = max(misalignment_top, misalignment_bottom)
-                    # misalignment= compute_misalignment(p12, p22, line)* le
-                                    
-                    # misalignment = calculate_bias(line, line_right) * le
                                 
                 if (case==2):
                     if p1 is not None:
                         for pr in zip(p1, p2):
                             plot = render_line(plot, pr, le, u)
-                    # remaining_sides_rect=get_remaining_sides(rect[0], rect[1])
-                    # misalignment= compute_misalignment(p11, p21, main_sides_rect[0])* le
-                    # misalignment = calculate_bias(*main_sides_rect) * le
                     misalignment_top = compute_misalignment(p12, p22, main_sides_rect[0]) * le
                     misalignment_bottom = compute_misalignment(p11, p21, main_sides_rect[0]) * le
                     
@@ -249,7 +231,6 @@ def main(config):
                 "b_upper": b_upper * le,
                 "t": t * le,
                 "A": A, 
-                # "hu": hu,
                 "hg": hg,
                 "he": he,
                 "hp": hp,
