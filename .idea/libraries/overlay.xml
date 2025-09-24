@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="overlay">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/cv_postprocessing/predicted_masks/overlay.zip!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
