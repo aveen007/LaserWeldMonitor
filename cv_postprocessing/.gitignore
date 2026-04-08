@@ -1,27 +1,27 @@
 AI_GENERATED_DATA/
-Annotations/
 Assets/
 coco.py
-datasets/
 Demo - COTS Dataset - Multiple Objects.ipynb
 Demo - COTS Dataset - Single Object.ipynb
 Environment/
 Evaluation/
 LICENSE
-predicted_masks/
+
 presentation.pdf
 README.md
 runs/
 tmp/
 toTrainOn/
-weld_processing/
 presentations/
 Rev 2/
 Test results/
-YOLOv8
-Plate/
-Paper/
-pixel_size/
+pixel_size/imgs/
+predicted_masks/**
+!predicted_masks/.gitkeep
+datasets/**
+!datasets/.gitkeep
+Annotations/**
+!Annotations/.gitkeep
 Main/
 for reporting purposes/
 Evaluation/
