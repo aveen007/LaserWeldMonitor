@@ -3,5 +3,6 @@
     "output_path": "welding\\examples\\output",
     "middle_part_path": "welding\\weights\\main.pt",
     "plate_model_path": "welding\\weights\\plate.pt",
+    "model_path": "welding\\weights\\best.pt",
     "render": true
 }

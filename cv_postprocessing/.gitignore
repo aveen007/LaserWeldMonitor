@@ -19,7 +19,6 @@ presentations/
 Rev 2/
 Test results/
 YOLOv8
-weldseg-main/
 Plate/
 Paper/
 pixel_size/
@@ -30,3 +29,5 @@ Evaluation/
 __pycache__/
 welding/examples/
 welding/weights/
+yolo11n.pt
+yolo11s-seg.pt

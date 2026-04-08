@@ -12,6 +12,7 @@ from PIL import Image, ImageDraw
 from shapely.geometry import Polygon, MultiPolygon
 import matplotlib.pyplot as plt
 from tqdm import tqdm
+import pandas as pd
 
 def overlay_mask(image_path, mask, alpha=0.8):
     # Load the image
@@ -104,7 +105,59 @@ def overlay_mask_jpg(image_path, masks, alpha=0.1):
     cv2.imwrite(overlay_path, frame)
 
     print(f"Overlay saved: {overlay_path}")
+def overlay_mask_unified(image_path, mask_input, alpha=0.3):
+    import cv2
+    import numpy as np
+    from pathlib import Path
+    from shapely.geometry import Polygon
 
+    image_path = Path(image_path)
+    overlay_base = Path("./predicted_masks/overlay")
+    overlay_path = overlay_base / image_path.relative_to("./predicted_masks/images")
+    overlay_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Load image
+    img = cv2.imread(str(image_path))
+    if img is None:
+        print(f"[WARN] Could not read image {image_path}")
+        return
+    overlay = np.zeros_like(img, dtype=np.uint8)
+
+    polygons = []
+
+    # ---- Handle YOLO Masks object ----
+    # YOLO Masks object has attribute 'xy'
+    if hasattr(mask_input, 'xy'):
+        for poly in mask_input.xy:
+            polygons.append(np.array(poly, dtype=np.int32))
+    
+    # ---- Handle list of polygons ----
+    elif isinstance(mask_input, list):
+        for poly in mask_input:
+            polygons.append(np.array(poly, dtype=np.int32))
+    
+    # ---- Handle raster mask path ----
+    else:
+        mask_path = Path(mask_input)
+        if mask_path.exists():
+            import PIL.Image as Image
+            mask_img = Image.open(mask_path).convert("L")
+            mask_arr = np.array(mask_img)
+            mask_bin = (mask_arr > 128).astype(np.uint8) * 255
+            contours, _ = cv2.findContours(mask_bin, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            polygons = [cnt.reshape(-1,2) for cnt in contours]
+
+    # Draw polygons
+    for poly in polygons:
+        if len(poly) >= 3:
+            cv2.fillPoly(overlay, [poly], (0, 255, 0))
+            c = np.mean(poly, axis=0).astype(int)
+            cv2.circle(overlay, tuple(c), 4, (0,0,255), -1)
+
+    blended = cv2.addWeighted(img, 1, overlay, alpha, 0)
+    cv2.imwrite(str(overlay_path), blended)
+    print(f"[OK] Overlay saved: {overlay_path}")
+    
 def process_yolo_masks(masks):
     """
     Takes YOLO segmentation masks and returns a single connected binary mask.
@@ -140,44 +193,158 @@ def process_yolo_masks(masks):
         final_mask = merged_mask  # If no contours found, keep original
 
     return final_mask
-
-
-def save_prediction_masks(train):
-    PATH_Images="./datasets/dataset/valid/images"
-    PATH_Masks="./predicted_masks/masks"
+def overlay_mask_multiclass(image_path, results, alpha=0.3):
+    import cv2
+    import numpy as np
+    from pathlib import Path
     
-    list_img=[img for img in os.listdir(PATH_Images) if img.endswith('.jpg')==True]
-  
-    model_path = Path(train)  # Adjust path as needed
+    # Define class colors - BGR format for OpenCV
+    class_colors = {
+        0: (255, 0, 0),      # blue_scale - Blue
+        1: (0, 255, 255),    # box scale - Yellow
+        2: (128, 128, 128),  # plate - Grayish
+        3: (255, 255, 0),    # ruler - Cyan
+        4: (0, 255, 0),      # scale_bar - Green
+        5: (0, 0, 255)       # weld - Reddish
+    }
+    
+    class_names = ['blue_scale', 'box scale', 'plate', 'ruler', 'scale_bar', 'weld']
+    
+    image_path = Path(image_path)
+    overlay_base = Path("./predicted_masks/overlay")
+    overlay_path = overlay_base / image_path.relative_to("./predicted_masks/images")
+    overlay_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Load image
+    img = cv2.imread(str(image_path))
+    if img is None:
+        print(f"[WARN] Could not read image {image_path}")
+        return
+    
+    overlay = np.zeros_like(img, dtype=np.uint8)
+    
+    # Check if we have detection results
+    if results is None or len(results) == 0 or results[0].masks is None:
+        print(f"[INFO] No detections for {image_path}")
+        # Save original image if no detections
+        cv2.imwrite(str(overlay_path), img)
+        return
+
+    result = results[0]
+    
+    # Process each detection
+    for i, (mask, class_id) in enumerate(zip(result.masks.xy, result.boxes.cls)):
+        class_id = int(class_id)
+        color = class_colors.get(class_id, (0, 255, 0))  # Default to green
+        
+        polygon = np.array(mask, dtype=np.int32)
+        
+        if len(polygon) >= 3:
+            # Draw filled polygon
+            cv2.fillPoly(overlay, [polygon], color)
+            
+            # Draw centroid
+            centroid = np.mean(polygon, axis=0).astype(int)
+            cv2.circle(overlay, tuple(centroid), 4, (255, 255, 255), -1)  # White centroid
+            
+            # Optional: Add class label
+            label = f"{class_names[class_id]}"
+            cv2.putText(overlay, label, tuple(centroid - [20, 10]), 
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1)
+
+    blended = cv2.addWeighted(img, 1, overlay, alpha, 0)
+    cv2.imwrite(str(overlay_path), blended)
+    print(f"[OK] Multi-class overlay saved: {overlay_path}")
+def normalize_illumination(img: np.ndarray) -> np.ndarray:
+    """Apply histogram equalization to normalize illumination."""
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    norm = cv2.equalizeHist(gray)
+    return cv2.cvtColor(norm, cv2.COLOR_GRAY2BGR)
+def save_prediction_masks(model_path_str):
+    PATH_Images = Path("./predicted_masks/images")
+    PATH_Masks = Path("./predicted_masks/masks")
+    
+    model_path = Path(model_path_str)
     model = YOLO(model_path)
-    for i in tqdm(list_img):
-        img_path=PATH_Images+"/"+ i
-        # Load the model (replace 'best.pt' with your actual model file name)
-        print(img_path)
-        # Load an image
-        img = cv2.imread(img_path)
 
-            # Resize the image
-        # print(img)
-        H, W,_ = img.shape
-        # conf_threshold=0.0001, iou_threshold=0.5
-        results = model(img,  iou=0.5,conf=0.0001, verbose=False )
-        # high_res = model.predict(img, imgsz=1280, conf=0.2)
-        # low_res = model.predict(img, imgsz=320, conf=0.15)
-        # results= high_res+low_res;
-        # mask= results[0].masks.data[0].cpu().numpy() * 255
-        mask= process_yolo_masks(results[0].masks)
-        # print(mask.shape[0]/mask.shape[1])
-        # mask = cv2.resize(mask, (W, H))
-        # print(H/W)
-    
-        mask_path=PATH_Masks+'/'+ i
- 
-        cv2.imwrite(mask_path, mask)
-        # print(mask_path, img_path)
-        overlay_mask_jpg(img_path,results[0].masks[0])
+    # All supported image extensions
+    valid_exts = {'.jpg', '.jpeg', '.png', '.tif', '.tiff', '.bmp', '.JPG', '.PNG', '.TIF'}
 
-      
+    # Walk recursively through subfolders
+    image_files = [p for p in PATH_Images.rglob('*') if p.suffix in valid_exts]
+
+    for img_path in tqdm(image_files, desc="Processing images"):
+        rel_path = img_path.relative_to(PATH_Images)
+        mask_output_path = PATH_Masks / rel_path
+        mask_output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        img = cv2.imread(str(img_path))
+        H, W, _ = img.shape
+
+
+        results = model(img, imgsz=[640], iou=0.4, conf=0.1)
+
+        if results[0].masks is None or len(results[0].masks) == 0:
+            # 🔹 2nd pass — retry with illumination normalization
+            img_norm = normalize_illumination(img)
+            results = model(img_norm, imgsz=[640], iou=0.4, conf=0.1)
+
+            if results[0].masks is None or len(results[0].masks) == 0:
+                print(f"[WARN] No masks predicted for {img_path} (even after normalization)")
+                mask = np.zeros((H, W), dtype=np.uint8)
+                cv2.imwrite(str(mask_output_path), mask)
+                overlay_mask_unified(str(img_path), [])
+                continue
+            else:
+                print(f"[INFO] {img_path.name}: Detected only after illumination normalization")
+
+        # 🔹 Process mask (successful detection)
+        mask = process_yolo_masks(results[0].masks)
+        mask = cv2.resize(mask, (W, H))
+        cv2.imwrite(str(mask_output_path), mask)
+        # overlay_mask_unified(str(img_path), results[0].masks)
+        overlay_mask_multiclass(str(img_path), results)
+def generate_segmentation_excel(base_dir='./predicted_masks/images', output_excel='segmentation_report.xlsx'):
+    base = Path(base_dir)
+    valid_exts = {'.jpg', '.jpeg', '.png', '.tif', '.tiff', '.bmp', '.JPG', '.PNG', '.TIF'}
+
+    data_by_material = {}
+
+    # Walk through all files recursively
+    for img_path in base.rglob('*'):
+        if img_path.suffix not in valid_exts:
+            continue
+
+        # Extract folder hierarchy
+        rel_parts = img_path.relative_to(base).parts
+        if len(rel_parts) < 2:
+            continue  # expects at least material/image.jpg
+
+        material = rel_parts[0]
+        subfolders = rel_parts[1:-1] if len(rel_parts) > 2 else []
+        filename = rel_parts[-1]
+
+        row = {
+            'image_id': filename,
+            'relative_path': str(img_path.relative_to(base)),
+            'material': material,
+            'subfolder_path': '/'.join(subfolders) if subfolders else '',
+            'segmentation_quality': '',   # to fill manually
+            'failure_type': '',
+            'notes': '',
+            'include_in_train': '',
+            'include_in_test': ''
+        }
+
+        data_by_material.setdefault(material, []).append(row)
+
+    # Write each material as a separate sheet
+    with pd.ExcelWriter(output_excel, engine='openpyxl') as writer:
+        for material, rows in data_by_material.items():
+            df = pd.DataFrame(rows)
+            df.to_excel(writer, sheet_name=material[:31], index=False)
+
+    print(f"✅ Excel report saved to {output_excel}")
 import shutil
 def add_to_dataset():
     path_images = './tmp/images/'
@@ -185,7 +352,7 @@ def add_to_dataset():
     path_masks_predicted='./predicted_masks/masks/'
     path_images_predicted='./predicted_masks/images/'
     path_overlay='./predicted_masks/overlay/'
-    list_img=[img for img in os.listdir(path_overlay) if img.endswith('.jpg')==True]
+    list_img=[img for img in os.listdir(path_overlay) if img.endswith('.JPG')==True]
     for i in tqdm(list_img):
         img_path_predicted=path_images_predicted+"/"+ i
         mask_path_predicted=path_masks_predicted+"/"+ i

@@ -181,16 +181,17 @@ def find_long_colored_line(image: np.ndarray, bbox: tuple[float, float, float, f
     contours, _ = cv2.findContours(closed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     if not contours:
-        return None, None, image  # Nothing found
+        return None, None  # Nothing found
 
     # Find the longest contour by bounding box width
     max_line = max(contours, key=lambda c: cv2.boundingRect(c)[2])
 
     # Get bounding box and endpoints
     x, y, w, h = cv2.boundingRect(max_line)
+    print(f"x {x}, y {y}, w {w}, h {h}")
     pt1 = np.array([x, y + h // 2])
     pt2 = np.array([x + w, y + h // 2])
-
+    print (pt1, pt2)
     # Draw the line and label
     result = image.copy()
     cv2.arrowedLine(result, pt1, pt2, (0, 255, 0), thickness=4)
@@ -227,18 +228,26 @@ def get_pixel_real_size(
 
     if val_units_text:
         value, unit = re.findall("[a-z]+|[0-9]+", val_units_text)
-        
+        print("colored ",find_long_colored_line(image, res_ocr[pred_id][0]) )
+        print("val unit",val_units_text )
+
+
         line_length_px, line = find_long_colored_line(image, res_ocr[pred_id][0])
-        # line_length_px, line = get_closest_horiz_line_width(image, res_ocr[pred_id][0])
+        if line_length_px is None:
+            print("⚠️  No colored scale line detected")
+            return None, None, None
     else:  # search on crops
         crops = crop_four(image)
+        found_scale= False
         for i, crop in enumerate(crops):
             res_ocr = reader.ocr(crop)[0]
             val_units_text, pred_id = match_units_text(res_ocr)
             if val_units_text:
                 value, unit = re.findall("[a-z]+|[0-9]+", val_units_text)
                 line_length_px, line = find_long_colored_line(image, res_ocr[pred_id][0])
-                
+                found_scale= True
+        if found_scale == False:
+            return None, None, None
                 # line_length_px, line = get_closest_horiz_line_width(crop, res_ocr[pred_id][0])
 
     unit = "μm" if unit == "m" else unit

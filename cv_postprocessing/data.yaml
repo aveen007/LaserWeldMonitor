@@ -1,0 +1,15 @@
+
+train: D:/LaserWeldMonitor/cv_postprocessing/datasets/dataset/train/images
+val: D:/LaserWeldMonitor/cv_postprocessing/datasets/dataset/valid/images
+test: D:/LaserWeldMonitor/cv_postprocessing/datasets/dataset/test/images
+
+
+nc: 6
+names: ['blue_scale', 'box scale', 'plate', 'ruler', 'scale_bar', 'weld']
+
+roboflow:
+  workspace: aveen
+  project: welding-for-new-models-mikhail-jrvjz
+  version: 2
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/aveen/welding-for-new-models-mikhail-jrvjz/dataset/2

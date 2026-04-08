@@ -1107,82 +1107,87 @@ const logNavigation = (direction, newIndex) => {
     </button>
   </div>
 )}
- {csvData?.properties && (
-   <div className="results-section">
-     <h3>Analysis Results</h3>
+{csvData?.properties && (
+  <div style={{
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    width: '95%',
+    maxWidth: '1200px',
+    margin: '20px auto',
+    padding: '20px'
+  }}>
+    <h3>Analysis Results</h3>
 
-     {/* Download Button */}
-     <button
-       onClick={() => downloadCsv(csvData.properties, 'properties.csv')}
-       className="download-btn"
-     >
-       Download CSV
-     </button>
+    <button
+      onClick={() => downloadCsv(csvData.properties, 'properties.csv')}
+      className="download-btn"
+    >
+      Download CSV
+    </button>
 
-     {/* Results Table */}
-     <div className="results-table-container">
-       <table className="results-table">
-         <thead>
-           <tr>
-             {[
-               'key_number',  // Numeric part
-               'key_letter',  // Letter part
-               'b_upper',
-               't',
-               'A',
-               'hg',
-               'he',
-               'hp',
-               'hs',
-               'hm',
-               'hi',
-               'b_downer'
-             ].map(header => (
-               <th key={header}>{header}</th>
-             ))}
-           </tr>
-         </thead>
-       <tbody>
-           {csvData.properties.map((row, index) => {
-             // Split the key here for display
-             const key = row.key || '';
-             const keyMatch = key.match(/(\d+)([a-zA-Z]*)/) || ['', '', ''];
-             const keyNumber = keyMatch[1] || '';
-             const keyLetter = keyMatch[2] || '';
+    <div style={{
+      width: '100%',
+      overflowX: 'auto',
+      border: '1px solid #ddd',
+      borderRadius: '8px',
+      backgroundColor: 'white'
+    }}>
+      <table style={{
+        width: '100%',
+        minWidth: '800px',
+        borderCollapse: 'collapse'
+      }}>
+        <thead>
+          <tr>
+            {['key_number', 'key_letter', 'b_upper', 't', 'A', 'hg', 'he', 'hp', 'hs', 'hm', 'hi', 'b_downer'].map(header => (
+              <th key={header} style={{
+                padding: '12px',
+                textAlign: 'center',
+                border: '1px solid #eee',
+                backgroundColor: '#f5f5f5',
+                position: 'sticky',
+                top: 0
+              }}>
+                {header}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {csvData.properties.map((row, index) => {
+            const key = row.key || '';
+            const keyMatch = key.match(/(\d+)([a-zA-Z]*)/) || ['', '', ''];
+            const keyNumber = keyMatch[1] || '';
+            const keyLetter = keyMatch[2] || '';
 
-             return (
-               <tr key={index}>
-                 {/* Key number and letter cells */}
-                 <td>{keyNumber}</td>
-                 <td>{keyLetter}</td>
-
-                 {/* Rest of the cells */}
-                 {[
-                   'b_upper',
-                   't',
-                   'A',
-                   'hg',
-                   'he',
-                   'hp',
-                   'hs',
-                   'hm',
-                   'hi',
-                   'b_downer'
-                 ].map(column => {
-                   const value = row[column];
-                   const formattedValue = typeof value === 'number'
-                     ? value.toFixed(column === 'A' ? 4 : 2)
-                     : value;
-                   return <td key={`${index}-${column}`}>{formattedValue}</td>;
-                 })}
-               </tr>
-             );
-           })}
-         </tbody>
-       </table>
-     </div>
-   </div>
- )}
+            return (
+              <tr key={index}>
+                <td style={{ padding: '12px', textAlign: 'center', border: '1px solid #eee' }}>{keyNumber}</td>
+                <td style={{ padding: '12px', textAlign: 'center', border: '1px solid #eee' }}>{keyLetter}</td>
+                {['b_upper', 't', 'A', 'hg', 'he', 'hp', 'hs', 'hm', 'hi', 'b_downer'].map(column => {
+                  const value = row[column];
+                  const formattedValue = typeof value === 'number'
+                    ? value.toFixed(column === 'A' ? 4 : 2)
+                    : value;
+                  return (
+                    <td key={`${index}-${column}`} style={{
+                      padding: '12px',
+                      textAlign: 'center',
+                      border: '1px solid #eee'
+                    }}>
+                      {formattedValue}
+                    </td>
+                  );
+                })}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  </div>
+)}
     </div>
   );
 
